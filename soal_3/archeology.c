@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 static const char *relics_path = "/home/ubuntu/sisop/relics";
-static const size_t CHUNK_SIZE = 10240; // 10KB
+static const size_t CHUNK_SIZE = 10240; // 
 
 static void get_fullpath(char *fullpath, const char *path, int chunk) {
     if (chunk >= 0)
@@ -34,7 +34,7 @@ static int relic_getattr(const char *path, struct stat *stbuf)
         if (res == -1) {
             return -errno;
         }
-        // Update the size to the combined size of all chunks
+       
         stbuf->st_size = 0;
         for (int i = 0;; i++) {
             get_fullpath(fullpath, path, i);
