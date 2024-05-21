@@ -10,8 +10,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static const char *relics_path = "/home/ubuntu/sisop/relics";
-static const size_t CHUNK_SIZE = 10240; // 
+static const char *relics_path = "/home/ubuntu/sisop4/relics";
+static const size_t CHUNK_SIZE = 10240; 
 
 static void get_fullpath(char *fullpath, const char *path, int chunk) {
     if (chunk >= 0)
@@ -34,7 +34,7 @@ static int relic_getattr(const char *path, struct stat *stbuf)
         if (res == -1) {
             return -errno;
         }
-       
+        
         stbuf->st_size = 0;
         for (int i = 0;; i++) {
             get_fullpath(fullpath, path, i);
@@ -173,11 +173,28 @@ static int relic_write(const char *path, const char *buf, size_t size, off_t off
     return total_written;
 }
 
+static int relic_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+    (void) fi;
+    char fullpath[1024];
+    get_fullpath(fullpath, path, 0);
+
+    strcat(fullpath, ".000");
+
+    int fd = open(fullpath, fi->flags, mode);
+    if (fd == -1)
+        return -errno;
+
+    close(fd);
+    return 0;
+}
+
 static int relic_unlink(const char *path)
 {
     char fullpath[1024];
     for (int i = 0;; i++) {
         get_fullpath(fullpath, path, i);
+     
         int res = unlink(fullpath);
         if (res == -1)
             break;
@@ -185,12 +202,14 @@ static int relic_unlink(const char *path)
     return 0;
 }
 
+
 static struct fuse_operations relic_oper = {
     .getattr    = relic_getattr,
     .readdir    = relic_readdir,
     .open       = relic_open,
     .read       = relic_read,
     .write      = relic_write,
+    .create     = relic_create,
     .unlink     = relic_unlink,
 };
 
