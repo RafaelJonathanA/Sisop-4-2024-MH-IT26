@@ -94,8 +94,19 @@ static int custom_chmod(const char *path, mode_t mode) {
     int result = chmod(full_path, mode);
     if (result == -1)
         return -errno;
+
+    // Check if file is script.sh or not 
+    char *script_name = "script.sh";
+    if (strcmp(path, script_name) == 0) {
+        // Add execution to script.sh 
+        mode_t execute_mode = mode | S_IXUSR | S_IXGRP | S_IXOTH;
+        if (chmod(full_path, execute_mode) == -1)
+            return -errno;
+    }
+
     return 0;
 }
+
 
 // Function to create a new file
 static int custom_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
