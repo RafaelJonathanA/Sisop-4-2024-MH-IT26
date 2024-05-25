@@ -652,5 +652,35 @@ int main(int argc, char *argv[])
 + Penggabungan dan Pemisahan: Saat membaca atau menulis file, sistem menggabungkan atau memisahkan chunk sesuai dengan offset dan ukuran yang diminta.
 
 ## ***REVISI***
+# Samba config belum dibuat
+```
+// Samba conf:
+// [<>]
+//     comment = Report - Soal 4 Modul 3 Sisop
+//     path = /home/ubuntu/sisop4/report
+//     read only = yes
+//     browsable = yes
+//     writable = no
+//     guest ok = yes
+```
+#CARA KERJA
+
++ Salin file secara manual: cp fuze/. report/
++ Input buat konfigurasi samba
++ Cari ip address dengan ip addr
++ Input ke smb:///<>
++ Masuk dengan username ubuntu, password ubuntu
 
  ## ***Dokumentasi***
+ ![Cuplikan layar 2024-05-25 132352](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150430084/5c0b5191-774e-4416-ba36-2b4a0803d8a2)
+ ![Cuplikan layar 2024-05-25 132659](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150430084/70885f3e-7f21-4b34-b812-9677fbd567fc)
+![Cuplikan layar 2024-05-25 132730](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150430084/8e5502e8-e30f-4b7e-9f27-270bbefa24ba)
+![Cuplikan layar 2024-05-25 132757](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150430084/74e40268-a80c-4b0c-afd1-3aa0145f2085)
+![Cuplikan layar 2024-05-25 132846](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150430084/cea63f10-4edf-47a7-94cc-d95448e7fdab)
+![Cuplikan layar 2024-05-25 132948](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150430084/e43a0a93-2aac-465d-ac72-31ccde3e6b25)
+
+
+
+
+
+
