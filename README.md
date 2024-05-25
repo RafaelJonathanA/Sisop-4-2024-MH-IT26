@@ -1404,10 +1404,8 @@ int main(int argc, char *argv[])
 ```
 #CARA KERJA
 
-+ Salin file secara manual: cp fuze/. report/
-+ Input buat konfigurasi samba
-+ Cari ip address dengan ip addr
-+ Input ke smb:///<>
++ Salin file secara manual: cp fuze/. report/, kemudian input buat konfigurasi samba
++ Cari ip address dengan ip addr, kemudian input ke smb:///<>
 + Masuk dengan username ubuntu, password ubuntu
 
  ## ***Dokumentasi***
@@ -1417,6 +1415,8 @@ int main(int argc, char *argv[])
 ![Cuplikan layar 2024-05-25 132757](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150430084/74e40268-a80c-4b0c-afd1-3aa0145f2085)
 ![Cuplikan layar 2024-05-25 132846](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150430084/cea63f10-4edf-47a7-94cc-d95448e7fdab)
 ![Cuplikan layar 2024-05-25 132948](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150430084/e43a0a93-2aac-465d-ac72-31ccde3e6b25)
+![Cuplikan layar 2024-05-25 135547](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150430084/a833db5e-12c8-4cc5-b19a-4788df8eba30)
+![Cuplikan layar 2024-05-25 140738](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150430084/46337a76-aeaf-4fa2-95e1-c18c1dfcd648)
 
 
 
