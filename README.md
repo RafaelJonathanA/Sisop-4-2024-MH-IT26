@@ -1402,7 +1402,7 @@ int main(int argc, char *argv[])
 //     writable = no
 //     guest ok = yes
 ```
-####CARA KERJA
+#### CARA KERJA
 
 + Salin file secara manual: cp fuze/. report/, kemudian input buat konfigurasi samba
 + Cari ip address dengan ip addr, kemudian input ke smb:///<>
