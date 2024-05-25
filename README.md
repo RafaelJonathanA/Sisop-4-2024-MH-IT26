@@ -788,9 +788,8 @@ Dan pada int main sebagai titik masuk program yang bisa mengmount sebuah direkto
 ![awal](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/679d8d70-0eda-448b-94e1-4e4e3912d26d)
 ![Setelah Mount](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/f176d842-b05f-410b-a222-ca29501be39a)
 ![Sebelum Watermark](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/006296b0-349f-4469-9c37-9d91554bbb73)
-![Setelah Watermark](https://github.com/RafaelJonathanA/Sisop-4-2024-M
+![Setelah Watermark](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/85675b54-790c-416e-b99a-351f2f6dea41)
 ![File test awal](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/b09cdf1f-ba5f-4653-b066-d74597e09791)
-H-IT26/assets/150375098/85675b54-790c-416e-b99a-351f2f6dea41)
 ![Langsung ter chmod](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/e1345745-c175-4251-88c4-e6b627afad2c)
 ![test di fuse](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/e35d4ade-e4d0-45c9-ae1a-9457512ae74e)
 
