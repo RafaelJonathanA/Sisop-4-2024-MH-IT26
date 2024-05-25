@@ -49,10 +49,750 @@ After: (terdapat watermark tulisan inikaryakita.id)
   + Adfi dan timnya juga ingin menambahkan fitur baru dengan membuat file dengan prefix "test" yang ketika disimpan akan mengalami pembalikan (reverse) isi dari file tersebut.
 
  ## ***PENGERJAAN***
+### inikaryakita.c 
+```c 
+#define FUSE_USE_VERSION 28
+#include <fuse.h>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <stdlib.h>
 
- ## ***PENJELASAN PENGERJAAN***
+// Path to the directory
+static const char *directory_path = "/home/ubuntu/SISOP/modul4/portofolio";
+
+// Custom structure to hold file information
+struct CustomFile {
+    char name[256];
+    mode_t mode;
+};
+
+// Function to get file attributes
+static int custom_getattr(const char *path, struct stat *st) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for getting file attributes
+    int result = lstat(full_path, st);
+    if (result == -1)
+        return -errno;
+    return 0;
+}
+
+// Function to read directory contents
+static int custom_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    DIR *dir = opendir(full_path);
+    if (dir == NULL)
+        return -errno;
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        struct stat st;
+        memset(&st, 0, sizeof(st));
+        st.st_ino = entry->d_ino;
+        st.st_mode = entry->d_type << 12;
+
+        // Custom logic for reading directory contents
+        if (filler(buf, entry->d_name, &st, 0))
+            break;
+    }
+
+    closedir(dir);
+    return 0;
+}
+
+// Function to create a directory
+static int custom_mkdir(const char *path, mode_t mode) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for creating a directory
+    int result = mkdir(full_path, mode);
+    if (result == -1)
+        return -errno;
+    return 0;
+}
+
+// Function to rename a file or directory
+static int custom_rename(const char *from, const char *to) {
+    char from_path[1000], to_path[1000];
+    snprintf(from_path, sizeof(from_path), "%s%s", directory_path, from);
+    snprintf(to_path, sizeof(to_path), "%s%s", directory_path, to);
+
+    // Custom logic for renaming
+    int result = rename(from_path, to_path);
+    if (result == -1)
+        return -errno;
+
+    // Apply watermark after renaming
+    char watermark_command[2048];
+    snprintf(watermark_command, sizeof(watermark_command), "convert %s -gravity south -geometry +0+20 -fill white -pointsize 36 -annotate +0+0 'inikaryakita.id' %s", to_path, to_path);
+    system(watermark_command);
+
+    return 0;
+}
+
+// Function to change file permissions
+static int custom_chmod(const char *path, mode_t mode) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    int result = chmod(full_path, mode);
+    if (result == -1)
+        return -errno;
+
+    // Check if file is script.sh or not 
+    char *script_name = "script.sh";
+    if (strcmp(path, script_name) == 0) {
+        // Add execution to script.sh 
+        mode_t execute_mode = mode | S_IXUSR | S_IXGRP | S_IXOTH;
+        if (chmod(full_path, execute_mode) == -1)
+            return -errno;
+    }
+
+    return 0;
+}
+
+// Function to create a new file
+static int custom_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for creating a file
+    int fd = creat(full_path, mode);
+    if (fd == -1)
+        return -errno;
+    fi->fh = fd;
+    return 0;
+}
+
+// Function to delete a file
+static int custom_unlink(const char *path) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for deleting a file
+    int result = unlink(full_path);
+    if (result == -1)
+        return -errno;
+    return 0;
+}
+
+// Function to reverse the content of a buffer
+static void reverse_buffer(char *buf, size_t size) {
+    size_t i = 0;
+    size_t j = size - 1;
+    while (i < j) {
+        char temp = buf[i];
+        buf[i] = buf[j];
+        buf[j] = temp;
+        i++;
+        j--;
+    }
+}
+
+// Function to check if a string contains another string
+static int contains_string(const char *haystack, const char *needle) {
+    size_t haystack_len = strlen(haystack);
+    size_t needle_len = strlen(needle);
+    for (size_t i = 0; i <= haystack_len - needle_len; i++) {
+        if (strncmp(haystack + i, needle, needle_len) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Custom logic for reading from a file
+static int custom_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Check if the filename contains the word "test"
+    if (contains_string(path, "test")) {
+        // Open the file
+        int fd = open(full_path, O_RDONLY);
+        if (fd == -1)
+            return -errno;
+
+        // Read from the file
+        ssize_t result = pread(fd, buf, size, offset);
+        if (result == -1) {
+            close(fd);
+            return -errno;
+        }
+
+        // Reverse the content of the buffer
+        reverse_buffer(buf, result);
+
+        // Close the file
+        close(fd);
+        return result;
+    } else {
+        // If the filename doesn't contain the word "test", read normally
+        int fd = open(full_path, O_RDONLY);
+        if (fd == -1)
+            return -errno;
+        ssize_t result = pread(fd, buf, size, offset);
+        if (result == -1) {
+            close(fd);
+            return -errno;
+        }
+        close(fd);
+        return result;
+    }
+}
+    
+// Function to write to a file
+static int custom_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for writing to a file
+    int fd = open(full_path, O_WRONLY);
+    if (fd == -1)
+        return -errno;
+    ssize_t result = pwrite(fd, buf, size, offset);
+    if (result == -1) {
+        close(fd);
+        return -errno;
+    }
+    close(fd);
+    return result;
+}
+
+// Function to copy a file
+static int custom_copy(const char *from, const char *to) {
+    char from_path[1000], to_path[1000];
+    snprintf(from_path, sizeof(from_path), "%s%s", directory_path, from);
+    snprintf(to_path, sizeof(to_path), "%s%s", directory_path, to);
+
+    // Custom logic for copying a file
+    int source_fd = open(from_path, O_RDONLY);
+    if (source_fd == -1)
+        return -errno;
+
+    int dest_fd = open(to_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (dest_fd == -1) {
+        close(source_fd);
+        return -errno;
+    }
+
+    char buffer[4096];
+    ssize_t bytes_read, bytes_written;
+    while ((bytes_read = read(source_fd, buffer, sizeof(buffer))) > 0) {
+        bytes_written = write(dest_fd, buffer, bytes_read);
+        if (bytes_written != bytes_read) {
+            close(source_fd);
+            close(dest_fd);
+            return -errno;
+        }
+    }
+
+    close(source_fd);
+    close(dest_fd);
+    return 0;
+}
+
+// Function to apply watermark
+static int custom_watermark(const char *path) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for applying watermark
+    char watermark_command[2048];
+    snprintf(watermark_command, sizeof(watermark_command), "convert %s -gravity south -geometry +0+20 -fill white -pointsize 36 -annotate +0+0 'inikaryakita.id' %s", full_path, full_path);
+    system(watermark_command);
+
+    return 0;
+}
+
+// Function to create a directory with watermark
+static int custom_mkdir_watermark(const char *path, mode_t mode) {
+    int result = custom_mkdir(path, mode);
+    if (result != 0)
+        return result;
+
+    custom_watermark(path);
+    return 0;
+}
+
+// Function to rename file or directory with watermark
+static int custom_rename_watermark(const char *from, const char *to) {
+    int result = custom_rename(from, to);
+    if (result != 0)
+        return result;
+
+    custom_watermark(to);
+    return 0;
+}
+
+// Fuse Operations Structure
+static struct fuse_operations custom_operations = {
+    .getattr    = custom_getattr,
+    .readdir    = custom_readdir,
+    .mkdir      = custom_mkdir_watermark,
+    .rename     = custom_rename_watermark,
+    .chmod      = custom_chmod,
+    .create     = custom_create,
+    .unlink     = custom_unlink,
+    .read       = custom_read,
+    .write      = custom_write,
+};
+
+// Main function
+int main(int argc, char *argv[]) {
+    return fuse_main(argc, argv, &custom_operations, NULL);
+}
+
+```
+
+## ***PENJELASAN PENGERJAAN***
+
+Kode diatas memiliki beberapa fungsi yaitu :
+- Membaca isi direktori
+- Membuat direktori
+- Mengubah nama file dan direktori
+- Mengubah izin file
+- Membuat file baru
+- Menghapus file
+- Membaca dari file (dengan pembalikan konten untuk file yang mengandung "test" dalam namanya)
+- Menulis ke file
+- Menyalin file
+- Mengeksekusi logika khusus untuk nama file tertentu (misalnya, `script.sh`) yang akan langsung memberikan permission untuk script.sh di eksekusi 
+
+```c
+// Path to the directory
+static const char *directory_path = "/home/ubuntu/SISOP/modul4/portofolio";
+
+// Custom structure to hold file information
+struct CustomFile {
+    char name[256];
+    mode_t mode;
+};
+
+// Function to get file attributes
+static int custom_getattr(const char *path, struct stat *st) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for getting file attributes
+    int result = lstat(full_path, st);
+    if (result == -1)
+        return -errno;
+    return 0;
+}
+```
+Kode diatas berfungsi 
+
+Untuk membangun path lengkap dengan menggabungkan directory_path dan path yang diberikan. Yaitu home/ubuntu/SISOP/modul4/Portofolio 
+Menggunakan lstat, kami mengambil atribut berkas dari path yang ditentukan dan menyimpannya dalam struktur st.
+Jika pengambilan berhasil, fungsi mengembalikan 0. Jika tidak, ia mengembalikan nomor kesalahan yang sesuai.
+
+```c
+// Function to read directory contents
+static int custom_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    DIR *dir = opendir(full_path);
+    if (dir == NULL)
+        return -errno;
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        struct stat st;
+        memset(&st, 0, sizeof(st));
+        st.st_ino = entry->d_ino;
+        st.st_mode = entry->d_type << 12;
+
+        // Custom logic for reading directory contents
+        if (filler(buf, entry->d_name, &st, 0))
+            break;
+    }
+
+    closedir(dir);
+    return 0;
+}
+```
+Kode diatas berfungsi untuk membaca konten dari direktori yang sudah di cari pada kode diatasnya lalu memasukkan berkas yanng diterima ke buffer. Apabila direktori tidak dapat dibuka maka akan ada pesan error yang keluar, lalu saat membaca direktori hasilnya tidak null maka akan ada pointer yang menunjuk ke buffer setelah itu direktori akan di tutup. 
+
+
+```c
+// Function to create a directory
+static int custom_mkdir(const char *path, mode_t mode) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for creating a directory
+    int result = mkdir(full_path, mode);
+    if (result == -1)
+        return -errno;
+    return 0;
+}
+
+// Function to rename a file or directory
+static int custom_rename(const char *from, const char *to) {
+    char from_path[1000], to_path[1000];
+    snprintf(from_path, sizeof(from_path), "%s%s", directory_path, from);
+    snprintf(to_path, sizeof(to_path), "%s%s", directory_path, to);
+
+    // Custom logic for renaming
+    int result = rename(from_path, to_path);
+    if (result == -1)
+        return -errno;
+
+    // Apply watermark after renaming
+    char watermark_command[2048];
+    snprintf(watermark_command, sizeof(watermark_command), "convert %s -gravity south -geometry +0+20 -fill white -pointsize 36 -annotate +0+0 'inikaryakita.id' %s", to_path, to_path);
+    system(watermark_command);
+
+    return 0;
+}
+
+// Function to change file permissions
+static int custom_chmod(const char *path, mode_t mode) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    int result = chmod(full_path, mode);
+    if (result == -1)
+        return -errno;
+
+    // Check if file is script.sh or not 
+    char *script_name = "script.sh";
+    if (strcmp(path, script_name) == 0) {
+        // Add execution to script.sh 
+        mode_t execute_mode = mode | S_IXUSR | S_IXGRP | S_IXOTH;
+        if (chmod(full_path, execute_mode) == -1)
+            return -errno;
+    }
+
+    return 0;
+}
+
+// Function to create a new file
+static int custom_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for creating a file
+    int fd = creat(full_path, mode);
+    if (fd == -1)
+        return -errno;
+    fi->fh = fd;
+    return 0;
+}
+
+// Function to delete a file
+static int custom_unlink(const char *path) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for deleting a file
+    int result = unlink(full_path);
+    if (result == -1)
+        return -errno;
+    return 0;
+}
+```
+Pada kode diatas ada beberapa fungsi yang diberikan yaitu 
+1. Logika untuk membuat sebuah direktori baru 
+2. Logika untuk merename sebuah direktori 
+3. Logika untuk mengatur permisiion atau izin suatu program ataupun file 
+4. Logika untuk membuat file baru 
+5. Logika untuk menghapus suatu file 
+
+
+snprintf
+
+snprintf adalah sebuah fungsi dalam bahasa pemrograman C yang digunakan untuk menulis format string ke dalam buffer. Format string tersebut kemudian disalin ke dalam array yang ditentukan oleh parameter str.
+
+1. custom_mkdir(const char *path, mode_t mode)
+
+Fungsi ini digunakan untuk membuat sebuah direktori baru pada path yang ditentukan.
+        Fungsi pertama-tama menggunakan snprintf untuk menggabungkan directory_path dan path ke dalam full_path.
+        Kemudian, menggunakan mkdir() untuk membuat direktori baru dengan path yang diberikan dan mode permission yang ditentukan.
+
+2. custom_rename(const char *from, const char *to)
+
+Fungsi ini digunakan untuk mengubah nama suatu berkas atau direktori.
+        Fungsi menggunakan snprintf untuk menggabungkan directory_path dan from ke dalam from_path, serta directory_path dan to ke dalam to_path.
+        Menggunakan rename() untuk mengubah nama dari from menjadi to.
+        Setelah proses pengubahan nama selesai, fungsi akan menambahkan watermark pada berkas yang baru diubah namanya menggunakan perintah eksternal system().
+
+3. custom_chmod(const char *path, mode_t mode)
+
+Fungsi ini digunakan untuk mengubah permission dari suatu berkas.
+        Fungsi menggunakan snprintf untuk menggabungkan directory_path dan path ke dalam full_path.
+        Menggunakan chmod() untuk mengubah permission dari berkas yang ditentukan.
+        Jika berkas yang akan diubah permission-nya adalah script.sh, fungsi juga menambahkan permission eksekusi ke dalam permission yang diberikan.
+
+4. custom_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+
+Fungsi ini digunakan untuk membuat berkas baru
+        Fungsi menggunakan snprintf untuk menggabungkan directory_path dan path ke dalam full_path.
+        Menggunakan creat() untuk membuat berkas baru dengan path dan mode permission yang ditentukan.
+
+5. custom_unlink(const char *path)
+
+Fungsi ini digunakan untuk menghapus sebuah berkas.
+        Fungsi menggunakan snprintf untuk menggabungkan directory_path dan path ke dalam full_path.
+        Menggunakan unlink() untuk menghapus berkas yang ditentukan.
+
+
+```c
+// Function to reverse the content of a buffer
+static void reverse_buffer(char *buf, size_t size) {
+    size_t i = 0;
+    size_t j = size - 1;
+    while (i < j) {
+        char temp = buf[i];
+        buf[i] = buf[j];
+        buf[j] = temp;
+        i++;
+        j--;
+    }
+}
+
+// Function to check if a string contains another string
+static int contains_string(const char *haystack, const char *needle) {
+    size_t haystack_len = strlen(haystack);
+    size_t needle_len = strlen(needle);
+    for (size_t i = 0; i <= haystack_len - needle_len; i++) {
+        if (strncmp(haystack + i, needle, needle_len) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Custom logic for reading from a file
+static int custom_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Check if the filename contains the word "test"
+    if (contains_string(path, "test")) {
+        // Open the file
+        int fd = open(full_path, O_RDONLY);
+        if (fd == -1)
+            return -errno;
+
+        // Read from the file
+        ssize_t result = pread(fd, buf, size, offset);
+        if (result == -1) {
+            close(fd);
+            return -errno;
+        }
+
+        // Reverse the content of the buffer
+        reverse_buffer(buf, result);
+
+        // Close the file
+        close(fd);
+        return result;
+    } else {
+        // If the filename doesn't contain the word "test", read normally
+        int fd = open(full_path, O_RDONLY);
+        if (fd == -1)
+            return -errno;
+        ssize_t result = pread(fd, buf, size, offset);
+        if (result == -1) {
+            close(fd);
+            return -errno;
+        }
+        close(fd);
+        return result;
+    }
+}
+    
+// Function to write to a file
+static int custom_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for writing to a file
+    int fd = open(full_path, O_WRONLY);
+    if (fd == -1)
+        return -errno;
+    ssize_t result = pwrite(fd, buf, size, offset);
+    if (result == -1) {
+        close(fd);
+        return -errno;
+    }
+    close(fd);
+    return result;
+}
+
+// Function to copy a file
+static int custom_copy(const char *from, const char *to) {
+    char from_path[1000], to_path[1000];
+    snprintf(from_path, sizeof(from_path), "%s%s", directory_path, from);
+    snprintf(to_path, sizeof(to_path), "%s%s", directory_path, to);
+
+    // Custom logic for copying a file
+    int source_fd = open(from_path, O_RDONLY);
+    if (source_fd == -1)
+        return -errno;
+
+    int dest_fd = open(to_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (dest_fd == -1) {
+        close(source_fd);
+        return -errno;
+    }
+
+    char buffer[4096];
+    ssize_t bytes_read, bytes_written;
+    while ((bytes_read = read(source_fd, buffer, sizeof(buffer))) > 0) {
+        bytes_written = write(dest_fd, buffer, bytes_read);
+        if (bytes_written != bytes_read) {
+            close(source_fd);
+            close(dest_fd);
+            return -errno;
+        }
+    }
+
+    close(source_fd);
+    close(dest_fd);
+    return 0;
+}
+
+// Function to apply watermark
+static int custom_watermark(const char *path) {
+    char full_path[1000];
+    snprintf(full_path, sizeof(full_path), "%s%s", directory_path, path);
+
+    // Custom logic for applying watermark
+    char watermark_command[2048];
+    snprintf(watermark_command, sizeof(watermark_command), "convert %s -gravity south -geometry +0+20 -fill white -pointsize 36 -annotate +0+0 'inikaryakita.id' %s", full_path, full_path);
+    system(watermark_command);
+
+    return 0;
+}
+
+// Function to create a directory with watermark
+static int custom_mkdir_watermark(const char *path, mode_t mode) {
+    int result = custom_mkdir(path, mode);
+    if (result != 0)
+        return result;
+
+    custom_watermark(path);
+    return 0;
+}
+
+// Function to rename file or directory with watermark
+static int custom_rename_watermark(const char *from, const char *to) {
+    int result = custom_rename(from, to);
+    if (result != 0)
+        return result;
+
+    custom_watermark(to);
+    return 0;
+}
+```
+Dari kode diatas ada beberapa fungsi utamanya :
+1. Melihat sebuah file dengan nama depan test akan secara reverse dengan cara menggunakan buffer yang terdapat pointer i dan j lalu nanti bacanya dibalik 
+2. Menulis sebuah file 
+3. Mengcopy sebuah file 
+4. Memberikan watermark (Baik  di file yang di copy, dipindahkan direktorinya, ataupun diubah namanya) 
+
+Penjelasan dari logika kode diatas adalah 
+
+1. reverse_buffer(char *buf, size_t size)
+
+Fungsi ini bertujuan untuk membalik isi dari sebuah buffer.
+        Menggunakan pendekatan dua pointer (i dan j) yang mulai dari awal dan akhir buffer untuk menukar setiap elemen hingga titik pertemuan di tengah buffer.
+
+2. contains_string(const char *haystack, const char *needle)
+
+Fungsi ini digunakan untuk memeriksa apakah sebuah string mengandung string lainnya.
+        Menggunakan loop untuk memeriksa setiap substring dari haystack yang panjangnya sama dengan panjang needle. Jika substring tersebut sama dengan needle, maka fungsi mengembalikan 1. Jika tidak ditemukan, mengembalikan 0.
+
+3. custom_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+
+Fungsi ini digunakan untuk membaca isi dari sebuah berkas dengan kemungkinan membalik isi berkas jika namanya mengandung kata "test".
+        Memeriksa apakah nama berkas mengandung kata "test".
+        Jika iya, berkas dibuka untuk dibaca (O_RDONLY), kemudian dibaca ke dalam buffer. Setelah itu, isi buffer dibalik menggunakan fungsi reverse_buffer.
+        Jika tidak, berkas dibaca normal tanpa pembalikan isi.
+        Mengembalikan jumlah byte yang berhasil dibaca.
+
+4. custom_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+
+Fungsi ini digunakan untuk menulis ke sebuah berkas.
+        Berfungsi mirip dengan custom_read, namun menggunakan pwrite untuk menulis ke berkas.
+
+5. custom_copy(const char *from, const char *to)
+
+Fungsi ini digunakan untuk menyalin berkas dari satu lokasi ke lokasi lainnya.
+        Membuka berkas sumber untuk dibaca (O_RDONLY) dan berkas tujuan untuk ditulis (O_WRONLY | O_CREAT | O_TRUNC).
+        Menggunakan loop untuk membaca sebagian dari berkas sumber dan menulisnya ke berkas tujuan.
+        Menutup kedua berkas setelah selesai.
+
+6. custom_watermark(const char *path)
+
+Fungsi ini digunakan untuk menambahkan watermark ke sebuah berkas gambar.
+        Menggunakan perintah eksternal convert dari ImageMagick untuk menambahkan watermark ke berkas gambar.
+        Perintah dieksekusi menggunakan system().
+
+7. custom_mkdir_watermark(const char *path, mode_t mode) & custom_rename_watermark(const char *from, const char *to)
+
+Fungsi-fungsi ini adalah varian dari custom_mkdir dan custom_rename yang menambahkan watermark ke direktori atau berkas yang baru dibuat atau diubah namanya.
+        Setelah melakukan operasi custom_mkdir atau custom_rename, fungsi ini memanggil custom_watermark untuk menambahkan watermark ke objek yang baru dibuat atau diubah namanya.
+
+```c
+// Fuse Operations Structure
+static struct fuse_operations custom_operations = {
+    .getattr    = custom_getattr,
+    .readdir    = custom_readdir,
+    .mkdir      = custom_mkdir_watermark,
+    .rename     = custom_rename_watermark,
+    .chmod      = custom_chmod,
+    .create     = custom_create,
+    .unlink     = custom_unlink,
+    .read       = custom_read,
+    .write      = custom_write,
+};
+
+// Main function
+int main(int argc, char *argv[]) {
+    return fuse_main(argc, argv, &custom_operations, NULL);
+}
+```
+
+Dan terakhir pada akhir kode 
+ terdapat struktur fuse_operations ini mendefinisikan setiap operasi yang akan diimplementasikan oleh sistem file yang disediakan.
+
+    getattr: Mengambil atribut dari sebuah berkas atau direktori.
+    readdir: Membaca isi dari sebuah direktori.
+    mkdir: Membuat sebuah direktori baru dengan tambahan watermark.
+    rename: Mengubah nama dari sebuah berkas atau direktori dengan tambahan watermark.
+    chmod: Mengubah permission dari sebuah berkas. (khususnya script.sh)
+    create: Membuat sebuah berkas baru.
+    unlink: Menghapus sebuah berkas.
+    read: Membaca isi dari sebuah berkas, dengan kemungkinan pembalikan isi jika nama berkas mengandung kata "test".
+    write: Menulis ke sebuah berkas.
+
+Setiap operasi dihubungkan dengan fungsi-fungsi yang telah didefinisikan sebelumnya. Sehingga nanti pada terminal hanya menulis chmod, atau create atau mkdir untuk menjalankan logika-logika pada kode. 
+
+Dan pada int main sebagai titik masuk program yang bisa mengmount sebuah direktori kosonng yang akan digunakan sebagai tempat FUSE
 
  ## ***Dokumentasi***
+![awal](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/679d8d70-0eda-448b-94e1-4e4e3912d26d)
+![Setelah Mount](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/f176d842-b05f-410b-a222-ca29501be39a)
+![Sebelum Watermark](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/006296b0-349f-4469-9c37-9d91554bbb73)
+![Setelah Watermark](https://github.com/RafaelJonathanA/Sisop-4-2024-M
+![File test awal](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/b09cdf1f-ba5f-4653-b066-d74597e09791)
+H-IT26/assets/150375098/85675b54-790c-416e-b99a-351f2f6dea41)
+![Langsung ter chmod](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/e1345745-c175-4251-88c4-e6b627afad2c)
+![test di fuse](https://github.com/RafaelJonathanA/Sisop-4-2024-MH-IT26/assets/150375098/e35d4ade-e4d0-45c9-ae1a-9457512ae74e)
 
 ## ***SOAL 2 (Abhinaya)***
 
